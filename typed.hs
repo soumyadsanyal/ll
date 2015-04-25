@@ -6,6 +6,7 @@ data Exp a where
  Plus :: Exp Int -> Exp Int -> Exp Int
  Times :: Exp Int -> Exp Int -> Exp Int
 
+-- just as a comment, eval is a functor!
 eval :: Exp a -> a
 eval (Constant x) = x
 eval (Plus x y) = (eval x) + (eval y)
