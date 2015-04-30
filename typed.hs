@@ -17,11 +17,5 @@ eval (Fun f) = (\x -> eval (f (Constant x)  ))
 plusone = Fun (\x -> (Plus x (Constant 1)))
 
 
-data Nat = Zero | Succ Nat
- deriving (Show, Eq)
-
-adding :: Nat -> Nat -> Nat
-adding whatever Zero = whatever
-adding whatever (Succ whoever) = Succ (adding whatever whoever)
 
 
