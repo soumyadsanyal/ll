@@ -42,6 +42,6 @@ subst (Fun v' b) v x = if (v==v') then (Fun v' b) else (Fun v' (subst b v x))
 
 plusone = Fun (Var 1) (Plus (Variable 1) (Constant (VInt 1)))
 
-
+y=Fun (Var 1) (App ((Fun (Var 2) (App (Variable 1) (App (Variable 2) (Variable 2))))) (Fun (Var 3) (App (Variable 1) (App (Variable 3) (Variable 3)))))
 
 
