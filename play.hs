@@ -13,34 +13,21 @@ data Exp where
  Or :: Exp -> Exp -> Exp
  Branch :: Exp -> Exp -> Exp -> Exp
 
-data Value = VCustomBool CustomBool  | VCustomInt CustomInt | VInt Int | VBool Bool | VFunction (Value -> Value)
+data Value = VCustomBool CustomBool  | VNat Nat | VInt Int | VBool Bool | VFunction (Value -> Value)
 
-data CustomInt = Zero | Succ CustomInt | Pred CustomInt
+data Nat = Zero | Succ Nat 
  deriving (Show, Eq)
 
 data CustomBool = CTrue | CFalse
  deriving (Show, Eq)
 
-simplifyCustomInts :: CustomInt -> CustomInt
-simplifyCustomInts Zero = Zero
-simplifyCustomInts (Succ (Pred x)) = x
-simplifyCustomInts (Pred (Succ x)) = x
-simplifyCustomInts x = x
+addnats :: Nat -> Nat -> Nat
+addnats x Zero = x
+addnats x (Succ y) = (Succ (addnats (x) (y)))
 
-customadd :: CustomInt -> CustomInt -> CustomInt
-customadd x Zero = simplifyCustomInts x
-customadd x (Succ y) = simplifyCustomInts (Succ (customadd (simplifyCustomInts x) (simplifyCustomInts y)))
-customadd x (Pred y) = simplifyCustomInts (Pred (customadd (simplifyCustomInts x) (simplifyCustomInts y)))
-
-customsubtract:: CustomInt -> CustomInt -> CustomInt
-customsubtract x Zero = x
-customsubtract x (Succ y) = Pred (customsubtract x y)
-customsubtract x (Pred y) = Succ (customsubtract x y)
-
-custommultiply :: CustomInt -> CustomInt -> CustomInt
-custommultiply x Zero = Zero
-custommultiply x (Succ y) = customadd x (custommultiply x y)
-custommultiply x (Pred y) = customsubtract (custommultiply x y) x
+multiplynats :: Nat -> Nat -> Nat
+multiplynats x Zero = Zero
+multiplynats x (Succ y) = addnats x (multiplynats x y)
 
 customand :: CustomBool -> CustomBool -> CustomBool
 customand CTrue CTrue = CTrue
@@ -54,10 +41,9 @@ customnot :: CustomBool -> CustomBool
 customnot CTrue = CFalse
 customnot CFalse = CTrue
 
-translateint :: CustomInt -> Int
+translateint :: Nat -> Int
 translateint Zero = 0
 translateint (Succ x) = (translateint x) + 1
-translateint (Pred x) = (translateint x) - 1
 
 translatebool :: CustomBool -> Bool
 translatebool CTrue = True
@@ -65,7 +51,7 @@ translatebool CFalse = not (translatebool (customnot CFalse))
 
 instance Show Value where
  show (VInt x) = show x
- show (VCustomInt x) = show x
+ show (VNat x) = show x
  show (VBool x) = show x
  show (VCustomBool x) = show x
  show _ = "<Function>"
@@ -78,27 +64,27 @@ eval :: Exp -> Value
 eval (Constant x) = x
 eval (Plus x y) = case (eval x, eval y) of 
   (VInt x, VInt y) -> VInt (x+y)
-  (VCustomInt x, VCustomInt y) -> VCustomInt (customadd x y)
-  (VInt _, VCustomInt _) -> error "Incompatible argument types!"
-  (VCustomInt _, VInt _) -> error "Incompatible argument types!"
-  _                -> error "Arguments must be Ints or CustomInts!"
+  (VNat x, VNat y) -> VNat (addnats x y)
+  (VInt _, VNat _) -> error "Incompatible argument types!"
+  (VNat _, VInt _) -> error "Incompatible argument types!"
+  _                -> error "Arguments must be Ints or Nats!"
 eval (Minus x y) = case (eval x, eval y) of 
   (VInt x, VInt y) -> VInt (x-y)
-  (VCustomInt x, VCustomInt y) -> VCustomInt (customsubtract x y)
-  (VInt _, VCustomInt _) -> error "Incompatible argument types!"
-  (VCustomInt _, VInt _) -> error "Incompatible argument types!"
-  _                -> error "Arguments must be Ints or CustomInts!"
+  (VNat x, VNat y) -> error "subtraction not defined on nats!"
+  (VInt _, VNat _) -> error "Incompatible argument types!"
+  (VNat _, VInt _) -> error "Incompatible argument types!"
+  _                -> error "Arguments must be Ints or Nats!"
 eval (Times x y) = case (eval x, eval y) of 
   (VInt x, VInt y) -> VInt (x*y)
-  (VCustomInt x, VCustomInt y) -> VCustomInt (custommultiply x y)
-  (VInt _, VCustomInt _) -> error "Incompatible argument types!"
-  (VCustomInt _, VInt _) -> error "Incompatible argument types!"
-  _                -> error "Arguments must be Ints or CustomInts!"
+  (VNat x, VNat y) -> VNat (multiplynats x y)
+  (VInt _, VNat _) -> error "Incompatible argument types!"
+  (VNat _, VInt _) -> error "Incompatible argument types!"
+  _                -> error "Arguments must be Ints or Nats!"
 eval (Divide x y) = case (eval x, eval y) of 
   (VInt x, VInt y) -> if (y/=0) then VInt (div x y) else error "Division by zero!"
-  (VCustomInt x, VCustomInt y) -> error "Division not defined on CustomInts!"
-  (VInt _, VCustomInt _) -> error "Incompatible argument types!"
-  (VCustomInt _, VInt _) -> error "Incompatible argument types!"
+  (VNat x, VNat y) -> error "Division not defined on Nats!"
+  (VInt _, VNat _) -> error "Incompatible argument types!"
+  (VNat _, VInt _) -> error "Incompatible argument types!"
   _                -> error "Arguments must be integers!"
 eval (Not x) = case (eval x) of
  (VBool x) -> VBool (not x)
@@ -135,7 +121,7 @@ subst (Or m n) v x = Or (subst m v x) (subst n v x)
 subst (App m n) v x = App (subst m v x) (subst n v x)
 subst (Fun v' b) v x = if (v==v') then (Fun v' b) else (Fun v' (subst b v x))
 
-plusone = Fun (Var 1) (Plus (Variable 1) (Constant (VCustomInt (Succ Zero))))
+plusone = Fun (Var 1) (Plus (Variable 1) (Constant (VNat (Succ Zero))))
 
 y=Fun (Var 1) (App ((Fun (Var 2) (App (Variable 1) (App (Variable 2) (Variable 2))))) (Fun (Var 3) (App (Variable 1) (App (Variable 3) (Variable 3)))))
 
