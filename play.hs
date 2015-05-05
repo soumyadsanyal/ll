@@ -13,7 +13,10 @@ data Exp where
  Or :: Exp -> Exp -> Exp
  Branch :: Exp -> Exp -> Exp -> Exp
 
-data Value = VInt Int | VBool Bool | VFunction (Value -> Value)
+data Value = VNat Nat | VInt Int | VBool Bool | VFunction (Value -> Value)
+
+data Nat = Zero | Succ Nat | Pred Nat
+ deriving (Show, Eq)
 
 instance Show Value where
  show (VInt x) = show x
@@ -28,7 +31,9 @@ eval :: Exp -> Value
 eval (Constant x) = x
 eval (Plus x y) = case (eval x, eval y) of 
   (VInt x, VInt y) -> VInt (x+y)
-  _                -> error "Arguments must be integers!"
+  (VNat x, VNat Zero) -> VNat x
+  (VNat x, VNat (Succ y)) -> VNat (eval (Plus (VNat (Succ x)) (VNat y) )  )
+  _                -> error "Arguments must be ints or nats!"
 eval (Minus x y) = case (eval x, eval y) of 
   (VInt x, VInt y) -> VInt (x-y)
   _                -> error "Arguments must be integers!"
