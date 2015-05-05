@@ -1,4 +1,6 @@
 {-# LANGUAGE GADTs #-}
+
+-- Define the language
 data Exp where 
  Fun :: Var -> Exp -> Exp
  App :: Exp -> Exp -> Exp 
@@ -14,6 +16,8 @@ data Exp where
  Branch :: Exp -> Exp -> Exp -> Exp
 
 data Value = VCustomBool CustomBool  | VCustomInt CustomInt | VInt Int | VBool Bool | VFunction (Value -> Value)
+
+--Custom datatypes. These will support ad-hoc polymorphism alongside their usual counterparts below.
 
 data CustomInt = Zero | Succ CustomInt | Pred CustomInt
  deriving (Show, Eq)
@@ -75,7 +79,7 @@ expandlist n
 simplify :: CustomInt -> CustomInt 
 simplify x = expandlist (reducelist (nattolist x)) 
 
-
+-- provide operations for CustomInts. CustomInts with these operations form a ring isomorphic to the integers. It might be fun to implement the field of fractions.
 addCustomInts :: CustomInt -> CustomInt -> CustomInt
 addCustomInts x Zero = simplifyCustomInts x
 addCustomInts x (Succ y) = simplifyCustomInts (Succ (addCustomInts (x) (y)))
@@ -92,6 +96,7 @@ timesCustomInts x Zero = Zero
 timesCustomInts x (Succ y) = simplifyCustomInts (addCustomInts x (timesCustomInts x y))
 timesCustomInts x (Pred y) = simplifyCustomInts (minusCustomInts (timesCustomInts x y) x)
 
+-- provide operations for CustomBool. This gives join, meet and complementation.
 customand :: CustomBool -> CustomBool -> CustomBool
 customand CTrue CTrue = CTrue
 customand _ _ = CFalse
@@ -104,12 +109,17 @@ customnot :: CustomBool -> CustomBool
 customnot CTrue = CFalse
 customnot CFalse = CTrue
 
-unwrap :: Value -> CustomInt
-unwrap (VCustomInt Zero) = Zero
-unwrap (VCustomInt (Succ x)) = Succ (x)
-unwrap (VCustomInt (Pred x)) = Pred (x)
+--Functions to extract CustomInts and CustomBools from the Value wrapper. Along with translateint and translatebool below, this allows me to map customtypes to their usual counterparts, for the purposes of the talk.
+unwrapint :: Value -> CustomInt
+unwrapint x = case x of
+ (VCustomInt Zero) -> Zero
+ (VCustomInt (Succ x)) -> Succ (x)
+ (VCustomInt (Pred x)) -> Pred (x)
 
-
+unwrapbool :: Value -> CustomBool
+unwrapbool x = case x of
+ (VCustomBool CTrue) -> CTrue
+ (VCustomBool CFalse) -> CFalse
 
 translateint :: CustomInt -> Int
 translateint Zero = 0
