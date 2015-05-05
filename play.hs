@@ -122,6 +122,8 @@ subst (App m n) v x = App (subst m v x) (subst n v x)
 subst (Fun v' b) v x = if (v==v') then (Fun v' b) else (Fun v' (subst b v x))
 
 plusone = Fun (Var 1) (Plus (Variable 1) (Constant (VNat (Succ Zero))))
+timesfour = Fun (Var 1) (Times (Variable 1) (Constant (VNat (Succ (Succ (Succ (Succ Zero)))))))
+
 
 y=Fun (Var 1) (App ((Fun (Var 2) (App (Variable 1) (App (Variable 2) (Variable 2))))) (Fun (Var 3) (App (Variable 1) (App (Variable 3) (Variable 3)))))
 
