@@ -79,6 +79,12 @@ expandlist n
 simplify :: CustomInt -> CustomInt 
 simplify x = expandlist (reducelist (nattolist x)) 
 
+-- another simplify solution
+
+simp :: CustomInt -> CustomInt 
+simp x = addCustomInts x Zero
+
+
 -- provide operations for CustomInts. CustomInts with these operations form a ring isomorphic to the integers. It might be fun to implement the field of fractions.
 addCustomInts :: CustomInt -> CustomInt -> CustomInt
 addCustomInts x Zero = simplifyCustomInts x
