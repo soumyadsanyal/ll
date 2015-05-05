@@ -68,6 +68,7 @@ minusCustomInts x (Pred y) = simplifyCustomInts (Succ (minusCustomInts x y))
 timesCustomInts :: CustomInt -> CustomInt -> CustomInt
 timesCustomInts x Zero = Zero
 timesCustomInts x (Succ y) = simplifyCustomInts (addCustomInts x (timesCustomInts x y))
+timesCustomInts x (Pred y) = simplifyCustomInts (minusCustomInts (timesCustomInts x y) x)
 
 customand :: CustomBool -> CustomBool -> CustomBool
 customand CTrue CTrue = CTrue
@@ -80,6 +81,13 @@ customor _ _ = CTrue
 customnot :: CustomBool -> CustomBool 
 customnot CTrue = CFalse
 customnot CFalse = CTrue
+
+unwrap :: Value -> CustomInt
+unwrap (VCustomInt Zero) = Zero
+unwrap (VCustomInt (Succ x)) = Succ (x)
+unwrap (VCustomInt (Pred x)) = Pred (x)
+
+
 
 translateint :: CustomInt -> Int
 translateint Zero = 0
@@ -105,19 +113,19 @@ eval :: Exp -> Value
 eval (Constant x) = x
 eval (Plus x y) = case (eval x, eval y) of 
   (VInt x, VInt y) -> VInt (x+y)
-  (VCustomInt x, VCustomInt y) -> VCustomInt (addCustomInts x y)
+  (VCustomInt x, VCustomInt y) -> VCustomInt (addCustomInts (simplifyCustomInts x) (simplifyCustomInts y))
   (VInt _, VCustomInt _) -> error "Incompatible argument types!"
   (VCustomInt _, VInt _) -> error "Incompatible argument types!"
   _                -> error "Arguments must be Ints or CustomInts!"
 eval (Minus x y) = case (eval x, eval y) of 
   (VInt x, VInt y) -> VInt (x-y)
-  (VCustomInt x, VCustomInt y) -> VCustomInt (minusCustomInts x y)
+  (VCustomInt x, VCustomInt y) -> VCustomInt (minusCustomInts (simplifyCustomInts x) (simplifyCustomInts y))
   (VInt _, VCustomInt _) -> error "Incompatible argument types!"
   (VCustomInt _, VInt _) -> error "Incompatible argument types!"
   _                -> error "Arguments must be Ints!"
 eval (Times x y) = case (eval x, eval y) of 
   (VInt x, VInt y) -> VInt (x*y)
-  (VCustomInt x, VCustomInt y) -> VCustomInt (timesCustomInts x y)
+  (VCustomInt x, VCustomInt y) -> VCustomInt (timesCustomInts (simplifyCustomInts x) (simplifyCustomInts y))
   (VInt _, VCustomInt _) -> error "Incompatible argument types!"
   (VCustomInt _, VInt _) -> error "Incompatible argument types!"
   _                -> error "Arguments must be Ints or CustomInts!"
