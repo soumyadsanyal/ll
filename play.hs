@@ -53,22 +53,30 @@ eval (Constant x) = x
 eval (Plus x y) = case (eval x, eval y) of 
   (VInt x, VInt y) -> VInt (x+y)
   (VNat x, VNat y) -> VNat (addnats x y)
+  (VInt _, VNat _) -> error "Incompatible argument types!"
+  (VNat _, VInt _) -> error "Incompatible argument types!"
   _                -> error "Arguments must be ints or nats!"
 eval (Minus x y) = case (eval x, eval y) of 
   (VInt x, VInt y) -> VInt (x-y)
   (VNat x, VNat y) -> VNat (minusnats x y)
+  (VInt _, VNat _) -> error "Incompatible argument types!"
+  (VNat _, VInt _) -> error "Incompatible argument types!"
   _                -> error "Arguments must be ints or nats!"
 eval (Times x y) = case (eval x, eval y) of 
   (VInt x, VInt y) -> VInt (x*y)
   (VNat x, VNat y) -> VNat (timesnats x y)
+  (VInt _, VNat _) -> error "Incompatible argument types!"
+  (VNat _, VInt _) -> error "Incompatible argument types!"
   _                -> error "Arguments must be ints or nats!"
 eval (Divide x y) = case (eval x, eval y) of 
   (VInt x, VInt y) -> if (y/=0) then VInt (div x y) else error "Division by zero!"
   (VNat x, VNat y) -> error "Division not defined on nats!"
+  (VInt _, VNat _) -> error "Incompatible argument types!"
+  (VNat _, VInt _) -> error "Incompatible argument types!"
   _                -> error "Arguments must be integers!"
 eval (Not x) = case (eval x) of
  (VBool x) -> VBool (not x)
- _         -> error "Not Boolean!"
+ _        -> error "Not Boolean!"
 eval (And x y) = case (eval x, eval y) of
  (VBool x, VBool y) -> VBool(x && y)
  _         -> error "Not Boolean!"
@@ -78,12 +86,6 @@ eval (Or x y) = case (eval x, eval y) of
 eval (Branch x y z) = case (eval x, eval y, eval z) of
  (VBool x, this, that) -> if (x==True) then this else that
  _         -> error "Condition must be Boolean!"
-
-
-
-
-
-
 eval (App first second) = case (eval first) of
  (VFunction f) -> f (eval second)
  _ ->  error "First argument is not a function!"
@@ -102,7 +104,7 @@ subst (Or m n) v x = Or (subst m v x) (subst n v x)
 subst (App m n) v x = App (subst m v x) (subst n v x)
 subst (Fun v' b) v x = if (v==v') then (Fun v' b) else (Fun v' (subst b v x))
 
-plusone = Fun (Var 1) (Plus (Variable 1) (Constant (VInt 1)))
+plusone = Fun (Var 1) (Plus (Variable 1) (Constant (VNat (Succ Zero))))
 
 y=Fun (Var 1) (App ((Fun (Var 2) (App (Variable 1) (App (Variable 2) (Variable 2))))) (Fun (Var 3) (App (Variable 1) (App (Variable 3) (Variable 3)))))
 
