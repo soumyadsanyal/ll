@@ -13,9 +13,12 @@ data Exp where
  Or :: Exp -> Exp -> Exp
  Branch :: Exp -> Exp -> Exp -> Exp
 
-data Value = VCustomInt CustomInt | VInt Int | VBool Bool | VFunction (Value -> Value)
+data Value = VCustomBool CustomBool  | VCustomInt CustomInt | VInt Int | VBool Bool | VFunction (Value -> Value)
 
 data CustomInt = Zero | Succ CustomInt | Pred CustomInt
+ deriving (Show, Eq)
+
+data CustomBool = CTrue | CFalse
  deriving (Show, Eq)
 
 simplifyCustomInts :: CustomInt -> CustomInt
@@ -39,10 +42,23 @@ custommultiply x Zero = Zero
 custommultiply x (Succ y) = customadd x (custommultiply x y)
 custommultiply x (Pred y) = customsubtract (custommultiply x y) x
 
+customand :: CustomBool -> CustomBool -> CustomBool
+customand CTrue CTrue = CTrue
+customand _ _ = CFalse
+
+customor :: CustomBool -> CustomBool -> CustomBool
+customor CFalse CFalse = CFalse
+customor _ _ = CTrue
+
+customnot :: CustomBool -> CustomBool 
+customnot CTrue = CFalse
+customnot CFalse = CTrue
+
 instance Show Value where
  show (VInt x) = show x
  show (VCustomInt x) = show x
  show (VBool x) = show x
+ show (VCustomBool x) = show x
  show _ = "<Function>"
 
 data Var = Var Int
@@ -77,16 +93,20 @@ eval (Divide x y) = case (eval x, eval y) of
   _                -> error "Arguments must be integers!"
 eval (Not x) = case (eval x) of
  (VBool x) -> VBool (not x)
+ (VCustomBool x) -> VCustomBool (customnot x)
  _        -> error "Not Boolean!"
 eval (And x y) = case (eval x, eval y) of
  (VBool x, VBool y) -> VBool(x && y)
+ (VCustomBool x, VCustomBool y) -> VCustomBool (customand x y)
  _         -> error "Not Boolean!"
 eval (Or x y) = case (eval x, eval y) of
  (VBool x, VBool y) -> VBool(x ||  y)
+ (VCustomBool x, VCustomBool y) -> VCustomBool (customor x y)
  _         -> error "Not Boolean!"
 eval (Branch x y z) = case (eval x, eval y, eval z) of
  (VBool x, this, that) -> if (x==True) then this else that
- _         -> error "Condition must be Boolean!"
+ (VCustomBool x, this, that) -> if (x==CTrue) then this else that
+ _         -> error "Condition must evaluate to Bool or CustomBool!"
 eval (App first second) = case (eval first) of
  (VFunction f) -> f (eval second)
  _ ->  error "First argument is not a function!"
