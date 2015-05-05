@@ -13,21 +13,61 @@ data Exp where
  Or :: Exp -> Exp -> Exp
  Branch :: Exp -> Exp -> Exp -> Exp
 
-data Value = VCustomBool CustomBool  | VNat Nat | VInt Int | VBool Bool | VFunction (Value -> Value)
+data Value = VCustomBool CustomBool  | VCustomInt CustomInt | VInt Int | VBool Bool | VFunction (Value -> Value)
 
-data Nat = Zero | Succ Nat 
+data CustomInt = Zero | Succ CustomInt | Pred CustomInt
  deriving (Show, Eq)
 
 data CustomBool = CTrue | CFalse
  deriving (Show, Eq)
 
-addnats :: Nat -> Nat -> Nat
-addnats x Zero = x
-addnats x (Succ y) = (Succ (addnats (x) (y)))
+reducer :: CustomInt -> CustomInt
+reducer Zero = Zero
+reducer (Succ x) = case x of
+ (Succ y) -> Succ (reducer x)
+ (Pred y) -> reducer y
+ Zero -> Succ Zero
+reducer (Pred x) = case x of
+ (Succ y) -> reducer y
+ (Pred y) -> Pred (reducer x)
+ Zero -> Pred Zero
 
-multiplynats :: Nat -> Nat -> Nat
-multiplynats x Zero = Zero
-multiplynats x (Succ y) = addnats x (multiplynats x y)
+data Parity = P | S 
+
+reduce :: [Parity] -> (CustomInt -> CustomInt) -> CustomInt -> CustomInt
+reduce [] reducer Zero = Zero 
+reduce [] reducer (Succ x) = reduce (S:[]) reducer x
+reduce [] reducer (Pred x) = reduce (P:[]) reducer x
+reduce (S:rest) reducer Zero = expand rest (Succ Zero)
+reduce (P:rest) reducer Zero = expand rest (Pred Zero)
+reduce (S:rest) reducer (Pred x) = reduce rest reducer x
+reduce (P:rest) reducer (Succ x) = reduce rest reducer x
+reduce (S:rest) reducer (Succ x) = reduce (S:S:rest) reducer x
+reduce (P:rest) reducer (Pred x) = reduce (P:P:rest) reducer x
+
+expand :: [Parity] -> CustomInt -> CustomInt
+expand [] nat = nat
+expand (P:rest) nat = expand rest (Pred nat)
+expand (S:rest) nat = expand rest (Succ nat)
+
+simplifyCustomInts :: CustomInt -> CustomInt
+simplifyCustomInts nat = reduce [] reducer nat
+
+
+addCustomInts :: CustomInt -> CustomInt -> CustomInt
+addCustomInts x Zero = simplifyCustomInts x
+addCustomInts x (Succ y) = simplifyCustomInts (Succ (addCustomInts (x) (y)))
+addCustomInts x (Pred y) = simplifyCustomInts (Pred (addCustomInts x y))
+
+minusCustomInts :: CustomInt -> CustomInt -> CustomInt
+minusCustomInts x Zero = simplifyCustomInts x
+minusCustomInts x (Succ y) = simplifyCustomInts (Pred (minusCustomInts (x) (y)))
+minusCustomInts x (Pred y) = simplifyCustomInts (Succ (minusCustomInts x y))
+
+
+timesCustomInts :: CustomInt -> CustomInt -> CustomInt
+timesCustomInts x Zero = Zero
+timesCustomInts x (Succ y) = simplifyCustomInts (addCustomInts x (timesCustomInts x y))
 
 customand :: CustomBool -> CustomBool -> CustomBool
 customand CTrue CTrue = CTrue
@@ -41,9 +81,10 @@ customnot :: CustomBool -> CustomBool
 customnot CTrue = CFalse
 customnot CFalse = CTrue
 
-translateint :: Nat -> Int
+translateint :: CustomInt -> Int
 translateint Zero = 0
 translateint (Succ x) = (translateint x) + 1
+translateint (Pred x) = (translateint x) - 1
 
 translatebool :: CustomBool -> Bool
 translatebool CTrue = True
@@ -51,7 +92,7 @@ translatebool CFalse = not (translatebool (customnot CFalse))
 
 instance Show Value where
  show (VInt x) = show x
- show (VNat x) = show x
+ show (VCustomInt x) = show x
  show (VBool x) = show x
  show (VCustomBool x) = show x
  show _ = "<Function>"
@@ -64,27 +105,27 @@ eval :: Exp -> Value
 eval (Constant x) = x
 eval (Plus x y) = case (eval x, eval y) of 
   (VInt x, VInt y) -> VInt (x+y)
-  (VNat x, VNat y) -> VNat (addnats x y)
-  (VInt _, VNat _) -> error "Incompatible argument types!"
-  (VNat _, VInt _) -> error "Incompatible argument types!"
-  _                -> error "Arguments must be Ints or Nats!"
+  (VCustomInt x, VCustomInt y) -> VCustomInt (addCustomInts x y)
+  (VInt _, VCustomInt _) -> error "Incompatible argument types!"
+  (VCustomInt _, VInt _) -> error "Incompatible argument types!"
+  _                -> error "Arguments must be Ints or CustomInts!"
 eval (Minus x y) = case (eval x, eval y) of 
   (VInt x, VInt y) -> VInt (x-y)
-  (VNat x, VNat y) -> error "subtraction not defined on nats!"
-  (VInt _, VNat _) -> error "Incompatible argument types!"
-  (VNat _, VInt _) -> error "Incompatible argument types!"
+  (VCustomInt x, VCustomInt y) -> VCustomInt (minusCustomInts x y)
+  (VInt _, VCustomInt _) -> error "Incompatible argument types!"
+  (VCustomInt _, VInt _) -> error "Incompatible argument types!"
   _                -> error "Arguments must be Ints!"
 eval (Times x y) = case (eval x, eval y) of 
   (VInt x, VInt y) -> VInt (x*y)
-  (VNat x, VNat y) -> VNat (multiplynats x y)
-  (VInt _, VNat _) -> error "Incompatible argument types!"
-  (VNat _, VInt _) -> error "Incompatible argument types!"
-  _                -> error "Arguments must be Ints or Nats!"
+  (VCustomInt x, VCustomInt y) -> VCustomInt (timesCustomInts x y)
+  (VInt _, VCustomInt _) -> error "Incompatible argument types!"
+  (VCustomInt _, VInt _) -> error "Incompatible argument types!"
+  _                -> error "Arguments must be Ints or CustomInts!"
 eval (Divide x y) = case (eval x, eval y) of 
   (VInt x, VInt y) -> if (y/=0) then VInt (div x y) else error "Division by zero!"
-  (VNat x, VNat y) -> error "Division not defined on Nats!"
-  (VInt _, VNat _) -> error "Incompatible argument types!"
-  (VNat _, VInt _) -> error "Incompatible argument types!"
+  (VCustomInt x, VCustomInt y) -> error "Division not defined on CustomInts!"
+  (VInt _, VCustomInt _) -> error "Incompatible argument types!"
+  (VCustomInt _, VInt _) -> error "Incompatible argument types!"
   _                -> error "Arguments must be integers!"
 eval (Not x) = case (eval x) of
  (VBool x) -> VBool (not x)
@@ -121,8 +162,8 @@ subst (Or m n) v x = Or (subst m v x) (subst n v x)
 subst (App m n) v x = App (subst m v x) (subst n v x)
 subst (Fun v' b) v x = if (v==v') then (Fun v' b) else (Fun v' (subst b v x))
 
-plusone = Fun (Var 1) (Plus (Variable 1) (Constant (VNat (Succ Zero))))
-timesfour = Fun (Var 1) (Times (Variable 1) (Constant (VNat (Succ (Succ (Succ (Succ Zero)))))))
+plusone = Fun (Var 1) (Plus (Variable 1) (Constant (VCustomInt (Succ Zero))))
+timesfour = Fun (Var 1) (Times (Variable 1) (Constant (VCustomInt (Succ (Succ (Succ (Succ Zero)))))))
 
 
 y=Fun (Var 1) (App ((Fun (Var 2) (App (Variable 1) (App (Variable 2) (Variable 2))))) (Fun (Var 3) (App (Variable 1) (App (Variable 3) (Variable 3)))))
