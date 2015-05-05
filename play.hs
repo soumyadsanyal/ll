@@ -208,4 +208,5 @@ timesfour = Fun (Var 1) (Times (Variable 1) (Constant (VCustomInt (Succ (Succ (S
 
 y=Fun (Var 1) (App ((Fun (Var 2) (App (Variable 1) (App (Variable 2) (Variable 2))))) (Fun (Var 3) (App (Variable 1) (App (Variable 3) (Variable 3)))))
 
+test = translateint (unwrapint (eval (Times (Constant (VCustomInt (Succ (Pred (Succ (Pred (Succ (Succ Zero)))))))) (Constant (VCustomInt (Pred Zero))))))
 
