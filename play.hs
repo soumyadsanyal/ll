@@ -18,8 +18,29 @@ data Value = VNat Nat | VInt Int | VBool Bool | VFunction (Value -> Value)
 data Nat = Zero | Succ Nat | Pred Nat
  deriving (Show, Eq)
 
+simplifynats :: Nat -> Nat
+simplifynats Zero = Zero
+simplifynats (Succ (Pred x)) = x
+simplifynats (Pred (Succ x)) = x
+
+addnats :: Nat -> Nat -> Nat
+addnats x Zero = x
+addnats x (Succ y) = Succ (addnats x y)
+addnats x (Pred y) = Pred (addnats x y)
+
+minusnats:: Nat -> Nat -> Nat
+minusnats x Zero = x
+minusnats x (Succ y) = Pred (minusnats x y)
+minusnats x (Pred y) = Succ (minusnats x y)
+
+timesnats :: Nat -> Nat -> Nat
+timesnats x Zero = Zero
+timesnats x (Succ y) = addnats x (timesnats x y)
+timesnats x (Pred y) = minusnats (timesnats x y) x
+
 instance Show Value where
  show (VInt x) = show x
+ show (VNat x) = show x
  show (VBool x) = show x
  show _ = "<Function>"
 
@@ -31,17 +52,19 @@ eval :: Exp -> Value
 eval (Constant x) = x
 eval (Plus x y) = case (eval x, eval y) of 
   (VInt x, VInt y) -> VInt (x+y)
-  (VNat x, VNat Zero) -> VNat x
-  (VNat x, VNat (Succ y)) -> VNat (eval (Plus (VNat (Succ x)) (VNat y) )  )
+  (VNat x, VNat y) -> VNat (addnats x y)
   _                -> error "Arguments must be ints or nats!"
 eval (Minus x y) = case (eval x, eval y) of 
   (VInt x, VInt y) -> VInt (x-y)
-  _                -> error "Arguments must be integers!"
+  (VNat x, VNat y) -> VNat (minusnats x y)
+  _                -> error "Arguments must be ints or nats!"
 eval (Times x y) = case (eval x, eval y) of 
   (VInt x, VInt y) -> VInt (x*y)
-  _                -> error "Arguments must be integers!"
+  (VNat x, VNat y) -> VNat (timesnats x y)
+  _                -> error "Arguments must be ints or nats!"
 eval (Divide x y) = case (eval x, eval y) of 
   (VInt x, VInt y) -> if (y/=0) then VInt (div x y) else error "Division by zero!"
+  (VNat x, VNat y) -> error "Division not defined on nats!"
   _                -> error "Arguments must be integers!"
 eval (Not x) = case (eval x) of
  (VBool x) -> VBool (not x)
