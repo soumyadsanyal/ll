@@ -73,7 +73,7 @@ eval (Minus x y) = case (eval x, eval y) of
   (VNat x, VNat y) -> error "subtraction not defined on nats!"
   (VInt _, VNat _) -> error "Incompatible argument types!"
   (VNat _, VInt _) -> error "Incompatible argument types!"
-  _                -> error "Arguments must be Ints or Nats!"
+  _                -> error "Arguments must be Ints!"
 eval (Times x y) = case (eval x, eval y) of 
   (VInt x, VInt y) -> VInt (x*y)
   (VNat x, VNat y) -> VNat (multiplynats x y)
