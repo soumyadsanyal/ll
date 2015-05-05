@@ -21,6 +21,9 @@ data CustomInt = Zero | Succ CustomInt | Pred CustomInt
 data CustomBool = CTrue | CFalse
  deriving (Show, Eq)
 
+data Parity = P | S 
+
+-- reducer, reduce, expand and simplifyCustomInts work to reduce any Nat to a canonical form. This solution only uses the List datatype provided by Haskell.
 reducer :: CustomInt -> CustomInt
 reducer Zero = Zero
 reducer (Succ x) = case x of
@@ -32,7 +35,6 @@ reducer (Pred x) = case x of
  (Pred y) -> Pred (reducer x)
  Zero -> Pred Zero
 
-data Parity = P | S 
 
 reduce :: [Parity] -> (CustomInt -> CustomInt) -> CustomInt -> CustomInt
 reduce [] reducer Zero = Zero 
@@ -52,6 +54,26 @@ expand (S:rest) nat = expand rest (Succ nat)
 
 simplifyCustomInts :: CustomInt -> CustomInt
 simplifyCustomInts nat = reduce [] reducer nat
+
+-- nattolist, reducelist, expandlist and simplify are an alternative solution to reduce any Nat to a canonical form using the Int datatype provided by Haskell
+nattolist :: CustomInt -> [Char]
+nattolist Zero = []
+nattolist (Succ x) = 'S':(nattolist x)
+nattolist (Pred x) = 'P':(nattolist x)
+
+reducelist :: [Char] -> Int
+reducelist [] = 0
+reducelist ('S':rest) = 1+(reducelist rest)
+reducelist ('P':rest) = (reducelist rest) - 1
+
+expandlist :: Int -> CustomInt
+expandlist n 
+ | n==0 = Zero
+ | n>0 = Succ (expandlist (n-1))
+ | n<0 = Pred (expandlist (n+1))
+
+simplify :: CustomInt -> CustomInt 
+simplify x = expandlist (reducelist (nattolist x)) 
 
 
 addCustomInts :: CustomInt -> CustomInt -> CustomInt
