@@ -54,6 +54,15 @@ customnot :: CustomBool -> CustomBool
 customnot CTrue = CFalse
 customnot CFalse = CTrue
 
+translateint :: CustomInt -> Int
+translateint Zero = 0
+translateint (Succ x) = (translateint x) + 1
+translateint (Pred x) = (translateint x) - 1
+
+translatebool :: CustomBool -> Bool
+translatebool CTrue = True
+translatebool CFalse = not (translatebool (customnot CFalse))
+
 instance Show Value where
  show (VInt x) = show x
  show (VCustomInt x) = show x
