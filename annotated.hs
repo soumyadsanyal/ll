@@ -9,7 +9,7 @@ data Exp where
  Minus :: Exp -> Exp -> Exp
  Times :: Exp -> Exp -> Exp 
  Divide :: Exp -> Exp -> Exp 
- Variable :: Int -> String -> Exp
+ Variable :: Int -> [String] -> Exp
  Not :: Exp -> Exp
  And :: Exp -> Exp -> Exp
  Or :: Exp -> Exp -> Exp
@@ -34,7 +34,7 @@ instance Show Value where
  show (VBool' x) = show x
  show _ = "<Function>"
 
-data Var = Var Int String
+data Var = Var Int [String]
  deriving (Eq, Show)
 
 -- reducer, reduce, expand and simplify reduce any Int' to a canonical form. This solution only uses the List datatype provided by Haskell.
@@ -188,12 +188,17 @@ eval (App first second) = case (eval first) of
  (VFunction f) -> f (eval second)
  _ ->  error "First argument is not a function!"
 eval (Fun (Var v annotation) f) = case annotation of 
- _ -> VFunction (\x -> eval(subst f (Var v annotation) x)) 
+ (first:second) -> VFunction (\x -> eval(subst f (Var v (first:[])) x)) 
+ _ -> error "Types don't match"
 
+listequal :: (Eq a) => [a] -> [a] -> Bool
+listequal [] [] = True
+listequal (x:xs) (y:ys) = if (x==y) then (listequal xs ys) else False
+listequal _ _ = False
 
 subst :: Exp -> Var -> Value -> Exp
 subst c@(Constant _) _ _ = c
-subst (Variable v annotation) (Var v' annotation') x = if (annotation==annotation') then (if (v==v') then (Constant x) else (Variable v annotation)) else error "Incompatible types"
+subst (Variable v annotation) (Var v' annotation') x = if (listequal annotation annotation') then (if (v==v') then (Constant x) else (Variable v annotation)) else error "Incompatible types"
 subst (Plus m n) v x = Plus (subst m v x) (subst n v x)
 subst (Minus m n) v x = Minus (subst m v x) (subst n v x)
 subst (Times m n) v x = Times (subst m v x) (subst n v x)
@@ -204,17 +209,17 @@ subst (Or m n) v x = Or (subst m v x) (subst n v x)
 subst (App m n) v x = App (subst m v x) (subst n v x)
 subst (Fun v' b) v x = if (v==v') then (Fun v' b) else (Fun v' (subst b v x))
 
-plusone = Fun (Var 1 "Int") (Plus (Variable 1 "Int") (Constant (VInt' (Succ Zero))))
+plusone = Fun (Var 1 ["Int"]) (Plus (Variable 1 ["Int"]) (Constant (VInt' (Succ Zero))))
 
-timesfour = Fun (Var 1 "Int") (Times (Variable 1 "Int") (Constant (VInt' (Succ (Succ (Succ (Succ Zero)))))))
+timesfour = Fun (Var 1 ["Int"]) (Times (Variable 1 ["Int"]) (Constant (VInt' (Succ (Succ (Succ (Succ Zero)))))))
 
 
-y=Fun (Var 1 "Int") (App ((Fun (Var 2 "Int") (App (Variable 1 "Int") (App (Variable 2 "Int") (Variable 2 "Int"))))) (Fun (Var 3 "Int") (App (Variable 1 "Int") (App (Variable 3 "Int") (Variable 3 "Int")))))
+y=Fun (Var 1 ["Int"]) (App ((Fun (Var 2 ["Int"]) (App (Variable 1 ["Int"]) (App (Variable 2 ["Int"]) (Variable 2 ["Int"]))))) (Fun (Var 3 ["Int"]) (App (Variable 1 ["Int"]) (App (Variable 3 ["Int"]) (Variable 3 ["Int"])))))
 
 test = translateint (unwrapint (eval (Times (Constant (VInt' (Succ (Pred (Succ (Pred (Succ (Succ Zero)))))))) (Constant (VInt' (Pred Zero))))))
 
-double = Fun (Var 1 "Int") ( Fun (Var 2 "Int -> Int") (App (App (Variable 2 "Int -> Int") (Variable 2 "Int -> Int")) (Variable 1 "Int")))
+thedouble = (Fun (Var 1 ["Int"]) ( Fun (Var 2 ["Int","Int"]) (App (App (Variable 2 ["Int","Int"]) (Variable 2 ["Int","Int"])) (Variable 1 ["Int"]))))
 
--- eval (App (App double plusone) (Constant (VInt' (Succ Zero)))) gives error "Incompatible types". This needs to be fixed.
+-- eval (App (App thedouble plusone) (Constant (VInt' (Succ Zero)))) gives error "Incompatible types". This needs to be fixed.
 
 
