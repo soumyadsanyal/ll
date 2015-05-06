@@ -205,10 +205,16 @@ subst (App m n) v x = App (subst m v x) (subst n v x)
 subst (Fun v' b) v x = if (v==v') then (Fun v' b) else (Fun v' (subst b v x))
 
 plusone = Fun (Var 1 "Int") (Plus (Variable 1 "Int") (Constant (VInt' (Succ Zero))))
+
 timesfour = Fun (Var 1 "Int") (Times (Variable 1 "Int") (Constant (VInt' (Succ (Succ (Succ (Succ Zero)))))))
 
 
 y=Fun (Var 1 "Int") (App ((Fun (Var 2 "Int") (App (Variable 1 "Int") (App (Variable 2 "Int") (Variable 2 "Int"))))) (Fun (Var 3 "Int") (App (Variable 1 "Int") (App (Variable 3 "Int") (Variable 3 "Int")))))
 
 test = translateint (unwrapint (eval (Times (Constant (VInt' (Succ (Pred (Succ (Pred (Succ (Succ Zero)))))))) (Constant (VInt' (Pred Zero))))))
+
+double = Fun (Var 1 "Int") ( Fun (Var 2 "Int -> Int") (App (App (Variable 2 "Int -> Int") (Variable 2 "Int -> Int")) (Variable 1 "Int")))
+
+-- eval (App (App double plusone) (Constant (VInt' (Succ Zero)))) gives error "Incompatible types". This needs to be fixed.
+
 
