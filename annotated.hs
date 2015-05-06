@@ -1,4 +1,5 @@
 {-# LANGUAGE GADTs #-}
+import Debug.Trace
 
 -- Define the language
 data Exp where 
@@ -191,14 +192,9 @@ eval (Fun (Var v annotation) f) = case annotation of
  (first:second) -> VFunction (\x -> eval(subst f (Var v (first:[])) x)) 
  _ -> error "Types don't match"
 
-listequal :: (Eq a) => [a] -> [a] -> Bool
-listequal [] [] = True
-listequal (x:xs) (y:ys) = if (x==y) then (listequal xs ys) else False
-listequal _ _ = False
-
 subst :: Exp -> Var -> Value -> Exp
 subst c@(Constant _) _ _ = c
-subst (Variable v annotation) (Var v' annotation') x = if (listequal annotation annotation') then (if (v==v') then (Constant x) else (Variable v annotation)) else error "Incompatible types"
+subst (Variable v annotation) (Var v' annotation') x = if (annotation==annotation') then (if (v==v') then (Constant x) else (Variable v annotation)) else error "Incompatible types!!!"
 subst (Plus m n) v x = Plus (subst m v x) (subst n v x)
 subst (Minus m n) v x = Minus (subst m v x) (subst n v x)
 subst (Times m n) v x = Times (subst m v x) (subst n v x)
@@ -209,7 +205,7 @@ subst (Or m n) v x = Or (subst m v x) (subst n v x)
 subst (App m n) v x = App (subst m v x) (subst n v x)
 subst (Fun v' b) v x = if (v==v') then (Fun v' b) else (Fun v' (subst b v x))
 
-plusone = Fun (Var 1 ["Int"]) (Plus (Variable 1 ["Int"]) (Constant (VInt' (Succ Zero))))
+plusone = Fun (Var 1 ["Int"]) (Plus (Variable 1 ["Int"]) (Constant (VInt 1)))
 
 timesfour = Fun (Var 1 ["Int"]) (Times (Variable 1 ["Int"]) (Constant (VInt' (Succ (Succ (Succ (Succ Zero)))))))
 
@@ -218,8 +214,11 @@ y=Fun (Var 1 ["Int"]) (App ((Fun (Var 2 ["Int"]) (App (Variable 1 ["Int"]) (App 
 
 test = translateint (unwrapint (eval (Times (Constant (VInt' (Succ (Pred (Succ (Pred (Succ (Succ Zero)))))))) (Constant (VInt' (Pred Zero))))))
 
-thedouble = (Fun (Var 1 ["Int"]) ( Fun (Var 2 ["Int","Int"]) (App (App (Variable 2 ["Int","Int"]) (Variable 2 ["Int","Int"])) (Variable 1 ["Int"]))))
+twice = Fun (Var 1 ["Int", "Int"]) (
+                Fun (Var 2 ["Int"]) (
+                          App (Variable 1 ["Int","Int"]) (
+                                App (Variable 1 ["Int","Int"]) (
+                                    (Variable 2 ["Int"])))))
 
--- eval (App (App thedouble plusone) (Constant (VInt' (Succ Zero)))) gives error "Incompatible types". This needs to be fixed.
 
 
