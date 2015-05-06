@@ -15,20 +15,20 @@ data Exp where
  Or :: Exp -> Exp -> Exp
  Branch :: Exp -> Exp -> Exp -> Exp
 
-data Value = VCustomBool CustomBool  | VCustomInt CustomInt | VInt Int | VBool Bool | VFunction (Value -> Value)
+data Value = VBool' Bool'  | VInt' Int' | VInt Int | VBool Bool | VFunction (Value -> Value)
 
 --Custom datatypes. These will support ad-hoc polymorphism alongside their usual counterparts below.
 
-data CustomInt = Zero | Succ CustomInt | Pred CustomInt
+data Int' = Zero | Succ Int' | Pred Int'
  deriving (Show, Eq)
 
-data CustomBool = CTrue | CFalse
+data Bool' = True' | False'
  deriving (Show, Eq)
 
 data Parity = P | S 
 
--- reducer, reduce, expand and simplifyCustomInts work to reduce any Nat to a canonical form. This solution only uses the List datatype provided by Haskell.
-reducer :: CustomInt -> CustomInt
+-- reducer, reduce, expand and simplify reduce any Int' to a canonical form. This solution only uses the List datatype provided by Haskell.
+reducer :: Int' -> Int'
 reducer Zero = Zero
 reducer (Succ x) = case x of
  (Succ y) -> Succ (reducer x)
@@ -39,8 +39,12 @@ reducer (Pred x) = case x of
  (Pred y) -> Pred (reducer x)
  Zero -> Pred Zero
 
+expand :: [Parity] -> Int' -> Int'
+expand [] x = x
+expand (P:rest) x = expand rest (Pred x)
+expand (S:rest) x = expand rest (Succ x)
 
-reduce :: [Parity] -> (CustomInt -> CustomInt) -> CustomInt -> CustomInt
+reduce :: [Parity] -> (Int' -> Int') -> Int' -> Int'
 reduce [] reducer Zero = Zero 
 reduce [] reducer (Succ x) = reduce (S:[]) reducer x
 reduce [] reducer (Pred x) = reduce (P:[]) reducer x
@@ -51,91 +55,85 @@ reduce (P:rest) reducer (Succ x) = reduce rest reducer x
 reduce (S:rest) reducer (Succ x) = reduce (S:S:rest) reducer x
 reduce (P:rest) reducer (Pred x) = reduce (P:P:rest) reducer x
 
-expand :: [Parity] -> CustomInt -> CustomInt
-expand [] nat = nat
-expand (P:rest) nat = expand rest (Pred nat)
-expand (S:rest) nat = expand rest (Succ nat)
+simplify :: Int' -> Int'
+simplify x = reduce [] reducer x
+-- makelist', reduce', expand', simplify' reduce any Int' to canonical form. This alternative solution uses the List and Int types in Haskell.
+makelist' :: Int' -> [Char]
+makelist' Zero = []
+makelist' (Succ x) = 'S':(makelist' x)
+makelist' (Pred x) = 'P':(makelist' x)
 
-simplifyCustomInts :: CustomInt -> CustomInt
-simplifyCustomInts nat = reduce [] reducer nat
+reduce' :: [Char] -> Int
+reduce' [] = 0
+reduce' ('S':rest) = 1+(reduce' rest)
+reduce' ('P':rest) = (reduce' rest) - 1
 
--- nattolist, reducelist, expandlist and simplify are an alternative solution to reduce any Nat to a canonical form using the Int datatype provided by Haskell
-nattolist :: CustomInt -> [Char]
-nattolist Zero = []
-nattolist (Succ x) = 'S':(nattolist x)
-nattolist (Pred x) = 'P':(nattolist x)
-
-reducelist :: [Char] -> Int
-reducelist [] = 0
-reducelist ('S':rest) = 1+(reducelist rest)
-reducelist ('P':rest) = (reducelist rest) - 1
-
-expandlist :: Int -> CustomInt
-expandlist n 
+expand' :: Int -> Int'
+expand' n 
  | n==0 = Zero
- | n>0 = Succ (expandlist (n-1))
- | n<0 = Pred (expandlist (n+1))
+ | n>0 = Succ (expand' (n-1))
+ | n<0 = Pred (expand' (n+1))
 
-simplify :: CustomInt -> CustomInt 
-simplify x = expandlist (reducelist (nattolist x)) 
-
-
--- provide operations for CustomInts. CustomInts with these operations form a ring isomorphic to the integers. It might be fun to implement the field of fractions.
-addCustomInts :: CustomInt -> CustomInt -> CustomInt
-addCustomInts x Zero = simplifyCustomInts x
-addCustomInts x (Succ y) = simplifyCustomInts (Succ (addCustomInts (x) (y)))
-addCustomInts x (Pred y) = simplifyCustomInts (Pred (addCustomInts x y))
-
-minusCustomInts :: CustomInt -> CustomInt -> CustomInt
-minusCustomInts x Zero = simplifyCustomInts x
-minusCustomInts x (Succ y) = simplifyCustomInts (Pred (minusCustomInts (x) (y)))
-minusCustomInts x (Pred y) = simplifyCustomInts (Succ (minusCustomInts x y))
+simplify' :: Int' -> Int' 
+simplify' x = expand' (reduce' (makelist' x)) 
 
 
-timesCustomInts :: CustomInt -> CustomInt -> CustomInt
-timesCustomInts x Zero = Zero
-timesCustomInts x (Succ y) = simplifyCustomInts (addCustomInts x (timesCustomInts x y))
-timesCustomInts x (Pred y) = simplifyCustomInts (minusCustomInts (timesCustomInts x y) x)
+-- provide operations for Int's. Int's with these operations form a ring isomorphic to the integers. It might be fun to implement the field of fractions.
+add' :: Int' -> Int' -> Int'
+add' x Zero = simplify x
+add' x (Succ y) = simplify (Succ (add' (x) (y)))
+add' x (Pred y) = simplify (Pred (add' x y))
 
--- provide operations for CustomBool. This gives join, meet and complementation.
-customand :: CustomBool -> CustomBool -> CustomBool
-customand CTrue CTrue = CTrue
-customand _ _ = CFalse
+minus' :: Int' -> Int' -> Int'
+minus' x Zero = simplify x
+minus' x (Succ y) = simplify (Pred (minus' (x) (y)))
+minus' x (Pred y) = simplify (Succ (minus' x y))
 
-customor :: CustomBool -> CustomBool -> CustomBool
-customor CFalse CFalse = CFalse
-customor _ _ = CTrue
 
-customnot :: CustomBool -> CustomBool 
-customnot CTrue = CFalse
-customnot CFalse = CTrue
+times' :: Int' -> Int' -> Int'
+times' x Zero = Zero
+times' x (Succ y) = simplify (add' x (times' x y))
+times' x (Pred y) = simplify (minus' (times' x y) x)
 
---Functions to extract CustomInts and CustomBools from the Value wrapper. Along with translateint and translatebool below, this allows me to map customtypes to their usual counterparts, for the purposes of the talk.
-unwrapint :: Value -> CustomInt
+-- provide operations for Bool'. This gives join, meet and complementation.
+and' :: Bool' -> Bool' -> Bool'
+and' True' True' = True'
+and' _ _ = False'
+
+or' :: Bool' -> Bool' -> Bool'
+or' False' False' = False'
+or' _ _ = True'
+
+not' :: Bool' -> Bool' 
+not' True' = False'
+not' False' = True'
+
+--Functions to extract Int's and Bool's from the Value wrapper. Along with translateint and translatebool below, this allows me to map customtypes to their usual counterparts, for the purposes of the talk.
+unwrapint :: Value -> Int'
 unwrapint x = case x of
- (VCustomInt Zero) -> Zero
- (VCustomInt (Succ x)) -> Succ (x)
- (VCustomInt (Pred x)) -> Pred (x)
+ (VInt' Zero) -> Zero
+ (VInt' (Succ x)) -> Succ (x)
+ (VInt' (Pred x)) -> Pred (x)
 
-unwrapbool :: Value -> CustomBool
+unwrapbool :: Value -> Bool'
 unwrapbool x = case x of
- (VCustomBool CTrue) -> CTrue
- (VCustomBool CFalse) -> CFalse
+ (VBool' True') -> True'
+ (VBool' False') -> False'
 
-translateint :: CustomInt -> Int
+translateint :: Int' -> Int
 translateint Zero = 0
 translateint (Succ x) = (translateint x) + 1
 translateint (Pred x) = (translateint x) - 1
 
-translatebool :: CustomBool -> Bool
-translatebool CTrue = True
-translatebool CFalse = not (translatebool (customnot CFalse))
+translatebool :: Bool' -> Bool
+translatebool True' = True
+translatebool False' = not (translatebool (not' False'))
 
 instance Show Value where
  show (VInt x) = show x
- show (VCustomInt x) = show x
+ show (VInt' x) = show x
  show (VBool x) = show x
- show (VCustomBool x) = show x
+ show (VBool' x) = show x
  show _ = "<Function>"
 
 data Var = Var Int
@@ -146,44 +144,44 @@ eval :: Exp -> Value
 eval (Constant x) = x
 eval (Plus x y) = case (eval x, eval y) of 
   (VInt x, VInt y) -> VInt (x+y)
-  (VCustomInt x, VCustomInt y) -> VCustomInt (addCustomInts (simplifyCustomInts x) (simplifyCustomInts y))
-  (VInt _, VCustomInt _) -> error "Incompatible argument types!"
-  (VCustomInt _, VInt _) -> error "Incompatible argument types!"
-  _                -> error "Arguments must be Ints or CustomInts!"
+  (VInt' x, VInt' y) -> VInt' (add' (simplify x) (simplify y))
+  (VInt _, VInt' _) -> error "Incompatible argument types!"
+  (VInt' _, VInt _) -> error "Incompatible argument types!"
+  _                -> error "Arguments must be Ints or Int's!"
 eval (Minus x y) = case (eval x, eval y) of 
   (VInt x, VInt y) -> VInt (x-y)
-  (VCustomInt x, VCustomInt y) -> VCustomInt (minusCustomInts (simplifyCustomInts x) (simplifyCustomInts y))
-  (VInt _, VCustomInt _) -> error "Incompatible argument types!"
-  (VCustomInt _, VInt _) -> error "Incompatible argument types!"
+  (VInt' x, VInt' y) -> VInt' (minus' (simplify x) (simplify y))
+  (VInt _, VInt' _) -> error "Incompatible argument types!"
+  (VInt' _, VInt _) -> error "Incompatible argument types!"
   _                -> error "Arguments must be Ints!"
 eval (Times x y) = case (eval x, eval y) of 
   (VInt x, VInt y) -> VInt (x*y)
-  (VCustomInt x, VCustomInt y) -> VCustomInt (timesCustomInts (simplifyCustomInts x) (simplifyCustomInts y))
-  (VInt _, VCustomInt _) -> error "Incompatible argument types!"
-  (VCustomInt _, VInt _) -> error "Incompatible argument types!"
-  _                -> error "Arguments must be Ints or CustomInts!"
+  (VInt' x, VInt' y) -> VInt' (times' (simplify x) (simplify y))
+  (VInt _, VInt' _) -> error "Incompatible argument types!"
+  (VInt' _, VInt _) -> error "Incompatible argument types!"
+  _                -> error "Arguments must be Ints or Int's!"
 eval (Divide x y) = case (eval x, eval y) of 
   (VInt x, VInt y) -> if (y/=0) then VInt (div x y) else error "Division by zero!"
-  (VCustomInt x, VCustomInt y) -> error "Division not defined on CustomInts!"
-  (VInt _, VCustomInt _) -> error "Incompatible argument types!"
-  (VCustomInt _, VInt _) -> error "Incompatible argument types!"
+  (VInt' x, VInt' y) -> error "Division not defined on Int's!"
+  (VInt _, VInt' _) -> error "Incompatible argument types!"
+  (VInt' _, VInt _) -> error "Incompatible argument types!"
   _                -> error "Arguments must be integers!"
 eval (Not x) = case (eval x) of
  (VBool x) -> VBool (not x)
- (VCustomBool x) -> VCustomBool (customnot x)
+ (VBool' x) -> VBool' (not' x)
  _        -> error "Not Boolean!"
 eval (And x y) = case (eval x, eval y) of
  (VBool x, VBool y) -> VBool(x && y)
- (VCustomBool x, VCustomBool y) -> VCustomBool (customand x y)
+ (VBool' x, VBool' y) -> VBool' (and' x y)
  _         -> error "Not Boolean!"
 eval (Or x y) = case (eval x, eval y) of
  (VBool x, VBool y) -> VBool(x ||  y)
- (VCustomBool x, VCustomBool y) -> VCustomBool (customor x y)
+ (VBool' x, VBool' y) -> VBool' (or' x y)
  _         -> error "Not Boolean!"
 eval (Branch x y z) = case (eval x, eval y, eval z) of
  (VBool x, this, that) -> if (x==True) then this else that
- (VCustomBool x, this, that) -> if (x==CTrue) then this else that
- _         -> error "Condition must evaluate to Bool or CustomBool!"
+ (VBool' x, this, that) -> if (x==True') then this else that
+ _         -> error "Condition must evaluate to Bool or Bool'!"
 eval (App first second) = case (eval first) of
  (VFunction f) -> f (eval second)
  _ ->  error "First argument is not a function!"
@@ -203,11 +201,11 @@ subst (Or m n) v x = Or (subst m v x) (subst n v x)
 subst (App m n) v x = App (subst m v x) (subst n v x)
 subst (Fun v' b) v x = if (v==v') then (Fun v' b) else (Fun v' (subst b v x))
 
-plusone = Fun (Var 1) (Plus (Variable 1) (Constant (VCustomInt (Succ Zero))))
-timesfour = Fun (Var 1) (Times (Variable 1) (Constant (VCustomInt (Succ (Succ (Succ (Succ Zero)))))))
+plusone = Fun (Var 1) (Plus (Variable 1) (Constant (VInt' (Succ Zero))))
+timesfour = Fun (Var 1) (Times (Variable 1) (Constant (VInt' (Succ (Succ (Succ (Succ Zero)))))))
 
 
 y=Fun (Var 1) (App ((Fun (Var 2) (App (Variable 1) (App (Variable 2) (Variable 2))))) (Fun (Var 3) (App (Variable 1) (App (Variable 3) (Variable 3)))))
 
-test = translateint (unwrapint (eval (Times (Constant (VCustomInt (Succ (Pred (Succ (Pred (Succ (Succ Zero)))))))) (Constant (VCustomInt (Pred Zero))))))
+test = translateint (unwrapint (eval (Times (Constant (VInt' (Succ (Pred (Succ (Pred (Succ (Succ Zero)))))))) (Constant (VInt' (Pred Zero))))))
 
