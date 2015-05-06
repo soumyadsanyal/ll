@@ -1,5 +1,4 @@
 {-# LANGUAGE GADTs #-}
-import Debug.Trace
 
 -- Define the language
 data Exp where 
@@ -10,7 +9,7 @@ data Exp where
  Minus :: Exp -> Exp -> Exp
  Times :: Exp -> Exp -> Exp 
  Divide :: Exp -> Exp -> Exp 
- Variable :: Int -> [String] -> Exp
+ Variable :: Int -> Exp
  Not :: Exp -> Exp
  And :: Exp -> Exp -> Exp
  Or :: Exp -> Exp -> Exp
@@ -35,8 +34,12 @@ instance Show Value where
  show (VBool' x) = show x
  show _ = "<Function>"
 
-data Var = Var Int [String]
+data Var = Var Int Annotation
  deriving (Eq, Show)
+
+data Annotation = AInt | ABool | AInt' | ABool' | AFunction Annotation Annotation 
+ deriving (Eq, Show)
+
 
 -- reducer, reduce, expand and simplify reduce any Int' to a canonical form. This solution only uses the List datatype provided by Haskell.
 reducer :: Int' -> Int'
@@ -186,42 +189,34 @@ eval (Branch x y z) = case (eval x, eval y, eval z) of
  (VBool' x, this, that) -> if (x==True') then this else that
  _         -> error "Condition must evaluate to Bool or Bool'!"
 eval (App first second) = case (eval first) of
- (VFunction f) -> trace("evaluating an App") f (eval second)
+ (VFunction f) -> f (eval second)
  _ ->  error "First argument is not a function!"
-eval (Fun (Var v annotation) f) = case annotation of 
- (first:second) -> trace("evaluating a Fun") VFunction (\x -> eval(subst f (Var v (first:[])) x)) 
- _ -> error "Types don't match"
+eval (Fun v f) = VFunction (\x -> eval(subst f v x))
+
 
 subst :: Exp -> Var -> Value -> Exp
-subst c@(Constant _) _ _ = trace("subst a constant") c
-subst (Variable v annotation) (Var v' annotation') x = if (annotation==annotation') then (if (v==v') then trace("made a substitution for a variable") (Constant x) else trace("variables don't match, skippped subs") Variable v annotation) else trace("annotations didn't match") error "Incompatible types!!!"
-subst (Plus m n) v x = trace("subst a Plus") Plus (subst m v x) (subst n v x)
-subst (Minus m n) v x = trace("subst a Minus") Minus (subst m v x) (subst n v x)
-subst (Times m n) v x = trace("subst a Times") Times (subst m v x) (subst n v x)
-subst (Divide m n) v x = trace("subst a Divide") Divide (subst m v x) (subst n v x)
-subst (Not m) v x = trace("subst a Not") Not (subst m v x)
-subst (And m n) v x = trace("subst a And") And (subst m v x) (subst n v x)
-subst (Or m n) v x = trace("subst a Or") Or (subst m v x) (subst n v x)
-subst (App m n) v x = trace("subst an App") App (subst m v x) (subst n v x)
-subst (Fun (Var v' annotation') b) (Var v annotation) x = if (annotation==annotation') then (if (v==v') then trace("subst an unbound variable") (Fun (Var v' annotation') b) else trace("skipped subst an unbound variable") (Fun (Var v' annotation') (subst b (Var v annotation) x))) else trace("annotations mismatched") error "Not comp types"
+subst c@(Constant _) _ _ = c
+subst (Variable v) (Var v') x = if (v==v') then (Constant x) else (Variable v)
+subst (Plus m n) v x = Plus (subst m v x) (subst n v x)
+subst (Minus m n) v x = Minus (subst m v x) (subst n v x)
+subst (Times m n) v x = Times (subst m v x) (subst n v x)
+subst (Divide m n) v x = Divide (subst m v x) (subst n v x)
+subst (Not m) v x = Not (subst m v x)
+subst (And m n) v x = And (subst m v x) (subst n v x)
+subst (Or m n) v x = Or (subst m v x) (subst n v x)
+subst (App m n) v x = App (subst m v x) (subst n v x)
+subst (Fun v' b) v x = if (v==v') then (Fun v' b) else (Fun v' (subst b v x))
 
-plusone = Fun (Var 1 ["Int"]) (Plus (Variable 1 ["Int"]) (Constant (VInt 1)))
+plusone = Fun (Var 1) (Plus (Variable 1) (Constant (VInt' (Succ Zero))))
+timesfour = Fun (Var 1) (Times (Variable 1) (Constant (VInt' (Succ (Succ (Succ (Succ Zero)))))))
 
-timesfour = Fun (Var 1 ["Int"]) (Times (Variable 1 ["Int"]) (Constant (VInt' (Succ (Succ (Succ (Succ Zero)))))))
 
-
-y=Fun (Var 1 ["Int"]) (App ((Fun (Var 2 ["Int"]) (App (Variable 1 ["Int"]) (App (Variable 2 ["Int"]) (Variable 2 ["Int"]))))) (Fun (Var 3 ["Int"]) (App (Variable 1 ["Int"]) (App (Variable 3 ["Int"]) (Variable 3 ["Int"])))))
+y=Fun (Var 1) (App ((Fun (Var 2) (App (Variable 1) (App (Variable 2) (Variable 2))))) (Fun (Var 3) (App (Variable 1) (App (Variable 3) (Variable 3)))))
 
 test = translateint (unwrapint (eval (Times (Constant (VInt' (Succ (Pred (Succ (Pred (Succ (Succ Zero)))))))) (Constant (VInt' (Pred Zero))))))
 
-twice = Fun (Var 1 ["Int", "Int"]) (
-                Fun (Var 2 ["Int"]) (
-                          App (Variable 1 ["Int","Int"]) (
-                                App (Variable 1 ["Int","Int"]) (
-                                    (Variable 2 ["Int"])))))
-
-
--- basically the problem here is parsing the type annotations correctly and passing them along. This needs to be done more carefully.
-
-
-
+double = Fun (Var 1) (
+             Fun (Var 2) (
+                 App (Variable 1) (
+                      App (Variable 1) (
+                              (Variable 2)))))
