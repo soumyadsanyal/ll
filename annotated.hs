@@ -186,24 +186,24 @@ eval (Branch x y z) = case (eval x, eval y, eval z) of
  (VBool' x, this, that) -> if (x==True') then this else that
  _         -> error "Condition must evaluate to Bool or Bool'!"
 eval (App first second) = case (eval first) of
- (VFunction f) -> f (eval second)
+ (VFunction f) -> trace("evaluating an App") f (eval second)
  _ ->  error "First argument is not a function!"
 eval (Fun (Var v annotation) f) = case annotation of 
- (first:second) -> VFunction (\x -> eval(subst f (Var v (first:[])) x)) 
+ (first:second) -> trace("evaluating a Fun") VFunction (\x -> eval(subst f (Var v (first:[])) x)) 
  _ -> error "Types don't match"
 
 subst :: Exp -> Var -> Value -> Exp
-subst c@(Constant _) _ _ = c
-subst (Variable v annotation) (Var v' annotation') x = if (annotation==annotation') then (if (v==v') then (Constant x) else (Variable v annotation)) else error "Incompatible types!!!"
-subst (Plus m n) v x = Plus (subst m v x) (subst n v x)
-subst (Minus m n) v x = Minus (subst m v x) (subst n v x)
-subst (Times m n) v x = Times (subst m v x) (subst n v x)
-subst (Divide m n) v x = Divide (subst m v x) (subst n v x)
-subst (Not m) v x = Not (subst m v x)
-subst (And m n) v x = And (subst m v x) (subst n v x)
-subst (Or m n) v x = Or (subst m v x) (subst n v x)
-subst (App m n) v x = App (subst m v x) (subst n v x)
-subst (Fun v' b) v x = if (v==v') then (Fun v' b) else (Fun v' (subst b v x))
+subst c@(Constant _) _ _ = trace("subst a constant") c
+subst (Variable v annotation) (Var v' annotation') x = if (annotation==annotation') then (if (v==v') then trace("made a substitution for a variable") (Constant x) else trace("variables don't match, skippped subs") Variable v annotation) else trace("annotations didn't match") error "Incompatible types!!!"
+subst (Plus m n) v x = trace("subst a Plus") Plus (subst m v x) (subst n v x)
+subst (Minus m n) v x = trace("subst a Minus") Minus (subst m v x) (subst n v x)
+subst (Times m n) v x = trace("subst a Times") Times (subst m v x) (subst n v x)
+subst (Divide m n) v x = trace("subst a Divide") Divide (subst m v x) (subst n v x)
+subst (Not m) v x = trace("subst a Not") Not (subst m v x)
+subst (And m n) v x = trace("subst a And") And (subst m v x) (subst n v x)
+subst (Or m n) v x = trace("subst a Or") Or (subst m v x) (subst n v x)
+subst (App m n) v x = trace("subst an App") App (subst m v x) (subst n v x)
+subst (Fun (Var v' annotation') b) (Var v annotation) x = if (annotation==annotation') then (if (v==v') then trace("subst an unbound variable") (Fun (Var v' annotation') b) else trace("skipped subst an unbound variable") (Fun (Var v' annotation') (subst b (Var v annotation) x))) else trace("annotations mismatched") error "Not comp types"
 
 plusone = Fun (Var 1 ["Int"]) (Plus (Variable 1 ["Int"]) (Constant (VInt 1)))
 
