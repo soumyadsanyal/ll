@@ -211,3 +211,8 @@ y=Fun (Var 1) (App ((Fun (Var 2) (App (Variable 1) (App (Variable 2) (Variable 2
 
 test = translateint (unwrapint (eval (Times (Constant (VInt' (Succ (Pred (Succ (Pred (Succ (Succ Zero)))))))) (Constant (VInt' (Pred Zero))))))
 
+double = Fun (Var 1) (
+             Fun (Var 2) (
+                 App (Variable 1) (
+                      App (Variable 1) (
+                              (Variable 2)))))

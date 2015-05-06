@@ -221,4 +221,6 @@ twice = Fun (Var 1 ["Int", "Int"]) (
                                     (Variable 2 ["Int"])))))
 
 
+-- basically the problem here is parsing the type annotations correctly and passing them along. This needs to be done more carefully.
+
 
