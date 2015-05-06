@@ -45,11 +45,13 @@ expand (P:rest) x = expand rest (Pred x)
 expand (S:rest) x = expand rest (Succ x)
 
 reduce :: [Parity] -> (Int' -> Int') -> Int' -> Int'
+--base cases
 reduce [] reducer Zero = Zero 
 reduce [] reducer (Succ x) = reduce (S:[]) reducer x
 reduce [] reducer (Pred x) = reduce (P:[]) reducer x
 reduce (S:rest) reducer Zero = expand rest (Succ Zero)
 reduce (P:rest) reducer Zero = expand rest (Pred Zero)
+--inductive cases
 reduce (S:rest) reducer (Pred x) = reduce rest reducer x
 reduce (P:rest) reducer (Succ x) = reduce rest reducer x
 reduce (S:rest) reducer (Succ x) = reduce (S:S:rest) reducer x
