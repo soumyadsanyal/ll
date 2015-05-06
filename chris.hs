@@ -9,7 +9,7 @@ data Exp where
  Minus :: Exp -> Exp -> Exp
  Times :: Exp -> Exp -> Exp 
  Divide :: Exp -> Exp -> Exp 
- Variable :: Int -> Exp
+ Variable :: Int -> Annotation -> Exp
  Not :: Exp -> Exp
  And :: Exp -> Exp -> Exp
  Or :: Exp -> Exp -> Exp
@@ -196,7 +196,9 @@ eval (Fun v f) = VFunction (\x -> eval(subst f v x))
 
 subst :: Exp -> Var -> Value -> Exp
 subst c@(Constant _) _ _ = c
-subst (Variable v) (Var v') x = if (v==v') then (Constant x) else (Variable v)
+subst (Variable v annotation) (Var v' annotation') x 
+ | annotation == annotation' = if (v==v') then (Constant x) else (Variable v annotation)
+ | otherwise = error "annotations don't match in the variable"
 subst (Plus m n) v x = Plus (subst m v x) (subst n v x)
 subst (Minus m n) v x = Minus (subst m v x) (subst n v x)
 subst (Times m n) v x = Times (subst m v x) (subst n v x)
@@ -205,18 +207,20 @@ subst (Not m) v x = Not (subst m v x)
 subst (And m n) v x = And (subst m v x) (subst n v x)
 subst (Or m n) v x = Or (subst m v x) (subst n v x)
 subst (App m n) v x = App (subst m v x) (subst n v x)
-subst (Fun v' b) v x = if (v==v') then (Fun v' b) else (Fun v' (subst b v x))
+subst (Fun (Var v' annotation') b) (Var v annotation) x 
+ | annotation == annotation' = if (v==v') then (Fun (Var v' annotation')  b) else (Fun (Var v' annotation') (subst b (Var v annotation) x))
+ | otherwise = error "annotations don't match in the Fun"
 
-plusone = Fun (Var 1) (Plus (Variable 1) (Constant (VInt' (Succ Zero))))
-timesfour = Fun (Var 1) (Times (Variable 1) (Constant (VInt' (Succ (Succ (Succ (Succ Zero)))))))
+plusone = Fun (Var 1 AInt') (Plus (Variable 1 AInt') (Constant (VInt' (Succ Zero))))
+timesfour = Fun (Var 1 AInt') (Times (Variable 1 AInt') (Constant (VInt' (Succ (Succ (Succ (Succ Zero)))))))
 
 
-y=Fun (Var 1) (App ((Fun (Var 2) (App (Variable 1) (App (Variable 2) (Variable 2))))) (Fun (Var 3) (App (Variable 1) (App (Variable 3) (Variable 3)))))
+y=Fun (Var 1 AInt') (App ((Fun (Var 2 AInt') (App (Variable 1 AInt') (App (Variable 2 AInt') (Variable 2 AInt'))))) (Fun (Var 3 AInt') (App (Variable 1 AInt') (App (Variable 3 AInt') (Variable 3 AInt')))))
 
 test = translateint (unwrapint (eval (Times (Constant (VInt' (Succ (Pred (Succ (Pred (Succ (Succ Zero)))))))) (Constant (VInt' (Pred Zero))))))
 
-double = Fun (Var 1) (
-             Fun (Var 2) (
-                 App (Variable 1) (
-                      App (Variable 1) (
-                              (Variable 2)))))
+double = Fun (Var 1 (AFunction AInt' AInt')) (
+             Fun (Var 2 AInt') (
+                 App (Variable 1 (AFunction AInt' AInt')) (
+                      App (Variable 1 (AFunction AInt' AInt')) (
+                              (Variable 2 AInt')))))
