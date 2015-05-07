@@ -176,7 +176,6 @@ double = Fun (Var 1 (TFunction TNat TNat)) (
                               (Variable 2 )))))
 
 
-omega = App (Fun (Var 1 TInt)  (Var 1 TInt) (Var 1 TInt)  ) (Fun (Var 1 TInt)  (Var 1 TInt) (Var 1 TInt)  ) 
 
 
 --Future work: implement parametric polymorphism and quantification
