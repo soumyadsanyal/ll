@@ -17,12 +17,10 @@ data Exp where
 
 data Value = VNat Nat | VInt Int | VBool Bool | VFunction (Value -> Value) 
 
---Custom datatypes. These will support ad-hoc polymorphism alongside their usual counterparts below.
+--Custom datatypes. 
 
 data Nat = Zero | Succ Nat 
  deriving (Show, Eq)
-
-data Parity = P | S 
 
 instance Show Value where
  show (VInt x) = show x
@@ -37,9 +35,7 @@ data Type = TInt | TBool | TNat | TFunction Type Type  | TError
  deriving (Eq, Show)
 
 
--- reducer, reduce, expand and simplify reduce any Nat to a canonical form. This solution only uses the List datatype provided by Haskell.
-
--- provide operations for Nats. Nats with these operations form a ring isomorphic to the integers. It might be fun to implement the field of fractions.
+-- provide operations for Nats. 
 add' :: Nat -> Nat -> Nat
 add' x Zero = x
 add' x (Succ y) = (Succ (add' (x) (y)))
@@ -48,7 +44,7 @@ times' :: Nat -> Nat -> Nat
 times' x Zero = Zero
 times' x (Succ y) = (add' x (times' x y))
 
---Functions to extract Nats and Bool's from the Value wrapper. Along with translateint and translatebool below, this allows me to map customtypes to their usual counterparts, for the purposes of the talk.
+--Functions to extract Nats from the Value wrapper. Along with translateint below, this allows me to map customtypes to their usual counterparts, for the purposes of the talk.
 unwrapint :: Value -> Nat
 unwrapint x = case x of
  (VNat Zero) -> Zero
@@ -58,7 +54,7 @@ translateint :: Nat -> Int
 translateint Zero = 0
 translateint (Succ x) = (translateint x) + 1
 
--- just as a comment, eval is a functor!
+--define eval
 eval :: Exp -> Value
 eval (Constant x) = x
 eval (Plus x y) = case (eval x, eval y) of 
@@ -116,6 +112,7 @@ subst (Or m n) v x = Or (subst m v x) (subst n v x)
 subst (App m n) v x = App (subst m v x) (subst n v x)
 subst (Fun (Var v' t') b) (v ) x = if (v==v') then (Fun (Var v' t')  b) else (Fun (Var v' t') (subst b (v ) x))
 
+-- this computes the type of an expression
 evalT :: (Int -> Type) -> Exp -> Type
 evalT _ (Constant (VInt _)) = TInt  
 evalT _ (Constant (VBool _)) = TBool
@@ -158,11 +155,13 @@ evalT tenv (Fun (Var v t) f) = TFunction t (evalT (extend tenv (v) t) f)
 extend :: Eq a => (a -> b) -> a -> b -> (a -> b)
 extend f x y = \w -> if (w==x) then y else (f w)
 
+-- This is the eval' we'll call
 eval' :: Exp -> Value
 eval' e = if (evalT initialenv e /= TError) then eval e else error "Type error!"
  where
   initialenv _ = TError
 
+-- predefined expressions for testing
 plusone = Fun (Var 1 TNat) (Plus (Variable 1 ) (Constant (VNat (Succ Zero))))
 timesfour = Fun (Var 1 TNat) (Times (Variable 1 ) (Constant (VNat (Succ (Succ (Succ (Succ Zero)))))))
 
